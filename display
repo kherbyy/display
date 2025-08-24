@@ -16,7 +16,7 @@ local Settings = {
     CounterToggleKey = Enum.KeyCode.L,
     MaxDistance = 1000,
     BlacklistedTools = { "Knife" },
-    SpamPerSecond = 600,
+    SpamPerSecond = 400,
 }
 
 local VIPUser = "draconvm" -- your username
