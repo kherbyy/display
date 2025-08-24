@@ -1,4 +1,4 @@
--- Triggerbot + Diamond Tag System
+-- Triggerbot + Diamond Tag System (Persistent)
 -- Anyone running this script will see "draconvm 💎"
 
 local Players = game:GetService("Players")
@@ -17,18 +17,21 @@ local Settings = {
     SpamPerSecond = 600,
 }
 
-local DiamondUser = "draconvm" -- <- YOUR NAME
+local DiamondUser = "draconvm" -- <- NAME TO TAG
 
+-- Blacklist table
 local BlacklistedTools = {}
 for _, name in ipairs(Settings.BlacklistedTools) do
     BlacklistedTools[name] = true
 end
 
+-- Function: check alive
 local function isAlive(character)
     local hum = character and character:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
 end
 
+-- Function: get usable tool
 local function getUsableTool(character)
     for _, tool in ipairs(character:GetChildren()) do
         if tool:IsA("Tool") and not BlacklistedTools[tool.Name] then
@@ -37,6 +40,7 @@ local function getUsableTool(character)
     end
 end
 
+-- Function: distance
 local function getDistance(a, b)
     local rootA = a:FindFirstChild("HumanoidRootPart") or a:FindFirstChild("Head")
     local rootB = b:FindFirstChild("HumanoidRootPart") or b:FindFirstChild("Head")
@@ -44,6 +48,7 @@ local function getDistance(a, b)
     return (rootA.Position - rootB.Position).Magnitude
 end
 
+-- Function: line of sight
 local function hasLineOfSight(targetChar)
     local camPos = Camera.CFrame.Position
     local targetRoot = targetChar and (targetChar:FindFirstChild("Head") or targetChar:FindFirstChild("HumanoidRootPart"))
@@ -57,6 +62,7 @@ local function hasLineOfSight(targetChar)
     return not (result and result.Instance and not result.Instance:IsDescendantOf(targetChar))
 end
 
+-- Function: target under crosshair
 local function getCrosshairTarget()
     local targetPart = Mouse.Target
     if not targetPart then return end
@@ -69,6 +75,7 @@ local function getCrosshairTarget()
     return char, player
 end
 
+-- Toggle on/off
 UserInputService.InputBegan:Connect(function(input, gp)
     if not gp and input.KeyCode == Settings.ToggleKey then
         Settings.Enabled = not Settings.Enabled
@@ -76,6 +83,27 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
+-- Diamond Tag Hook (auto refresh across rejoins)
+local function getTaggedName(player)
+    if player and player.Name == DiamondUser then
+        return player.DisplayName .. " 💎"
+    elseif player then
+        return player.DisplayName
+    end
+end
+
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+
+local oldIndex = mt.__index
+mt.__index = function(obj, key)
+    if key == "DisplayName" and typeof(obj) == "Instance" and obj:IsA("Player") then
+        return getTaggedName(obj)
+    end
+    return oldIndex(obj, key)
+end
+
+-- Main loop
 RunService.RenderStepped:Connect(function(dt)
     if not Settings.Enabled then return end
 
@@ -91,11 +119,11 @@ RunService.RenderStepped:Connect(function(dt)
             myChar:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
         end
 
-        -- Apply 💎 tag if target is draconvm
-        if targetPlayer and targetPlayer.Name == DiamondUser then
-            print("Targeting: " .. targetPlayer.DisplayName .. " 💎")
+        -- Print target name (auto-tag applied)
+        if targetPlayer then
+            print("Targeting: " .. targetPlayer.DisplayName)
         else
-            print("Targeting: " .. (targetPlayer and targetPlayer.DisplayName or "Unknown"))
+            print("Targeting: Unknown")
         end
 
         local spamRate = math.max(1, math.floor(Settings.SpamPerSecond * dt))
