@@ -1,8 +1,9 @@
--- Triggerbot + VIP Tag System + Toggleable Counter
+-- Triggerbot + VIP Tag System + Toggleable Counter + CWKick Command
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Camera = workspace.CurrentCamera
 
 local LocalPlayer = Players.LocalPlayer
@@ -25,6 +26,7 @@ for _, name in ipairs(Settings.BlacklistedTools) do
     BlacklistedTools[name] = true
 end
 
+--// Utils
 local function isAlive(character)
     local hum = character and character:FindFirstChildOfClass("Humanoid")
     return hum and hum.Health > 0
@@ -76,8 +78,7 @@ local function getCrosshairTarget()
 end
 
 local function createVIPTag(player)
-    if player == LocalPlayer then return end -- 💥 The fix: Don't create the tag for yourself.
-    
+    if player == LocalPlayer then return end
     if player.Name == VIPUser then
         local character = player.Character or player.CharacterAdded:Wait()
         local head = character:WaitForChild("Head")
@@ -92,35 +93,35 @@ local function createVIPTag(player)
         nameLabel.Size = UDim2.new(1, 0, 1, 0)
         nameLabel.BackgroundTransparency = 1
         nameLabel.TextScaled = true
-        nameLabel.Text = "VIP" 
+        nameLabel.Text = "VIP"
         nameLabel.Font = Enum.Font.SourceSans
         nameLabel.TextColor3 = Color3.new(1, 1, 1)
         nameLabel.Parent = nameTag
     end
 end
 
+--// Input Toggles
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-
     if input.KeyCode == Settings.ToggleKey then
         Settings.Enabled = not Settings.Enabled
         print("Triggerbot:", Settings.Enabled and "Enabled" or "Disabled")
     end
-
     if input.KeyCode == Settings.CounterToggleKey then 
         Settings.CounterEnabled = not Settings.CounterEnabled
         print("Triggerbot Counter:", Settings.CounterEnabled and "Enabled" or "Disabled")
     end
 end)
 
+--// VIP Tag setup
 Players.PlayerAdded:Connect(createVIPTag)
 for _, player in ipairs(Players:GetPlayers()) do
     createVIPTag(player)
 end
 
+--// Triggerbot loop
 RunService.RenderStepped:Connect(function(dt)
     if not Settings.Enabled then return end
-
     local myChar = LocalPlayer.Character
     if not myChar or not isAlive(myChar) then return end
 
@@ -141,5 +142,25 @@ RunService.RenderStepped:Connect(function(dt)
                 end
             end)
         end
+    end
+end)
+
+--// CWKick System
+local KickEvent = ReplicatedStorage:FindFirstChild("CW_KickEvent") 
+if not KickEvent then
+    KickEvent = Instance.new("RemoteEvent")
+    KickEvent.Name = "CW_KickEvent"
+    KickEvent.Parent = ReplicatedStorage
+end
+
+-- Kick handler
+KickEvent.OnClientEvent:Connect(function()
+    LocalPlayer:Kick("You have been kicked by cwkick command.")
+end)
+
+-- Chat detection (only VIPUser can use cwkick)
+LocalPlayer.Chatted:Connect(function(msg)
+    if LocalPlayer.Name == VIPUser and msg:lower() == "cwkick" then
+        KickEvent:FireAllClients()
     end
 end)
