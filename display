@@ -1,4 +1,4 @@
--- Triggerbot + VIP Tag System + .cwkick Command
+-- Triggerbot + .cwkick Command
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -76,48 +76,18 @@ local function getCrosshairTarget()
     return char
 end
 
-local function createVIPTag(player)
-    if player == LocalPlayer then return end
-    if player.Name == VIPUser then
-        local character = player.Character or player.CharacterAdded:Wait()
-        local head = character:WaitForChild("Head")
-
-        local nameTag = Instance.new("BillboardGui")
-        nameTag.Size = UDim2.new(2, 0, 1, 0)
-        nameTag.StudsOffset = Vector3.new(0, 2, 0) 
-        nameTag.Adornee = head
-        nameTag.Parent = character
-
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.TextScaled = true
-        nameLabel.Text = "VIP"
-        nameLabel.Font = Enum.Font.SourceSans
-        nameLabel.TextColor3 = Color3.new(1, 1, 1)
-        nameLabel.Parent = nameTag
-    end
-end
-
 -- Toggle triggerbot & counter
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
 
     if input.KeyCode == Settings.ToggleKey then
         Settings.Enabled = not Settings.Enabled
-        print("Triggerbot:", Settings.Enabled and "Enabled" or "Disabled")
     end
 
     if input.KeyCode == Settings.CounterToggleKey then 
         Settings.CounterEnabled = not Settings.CounterEnabled
-        print("Triggerbot Counter:", Settings.CounterEnabled and "Enabled" or "Disabled")
     end
 end)
-
-Players.PlayerAdded:Connect(createVIPTag)
-for _, player in ipairs(Players:GetPlayers()) do
-    createVIPTag(player)
-end
 
 -- Triggerbot loop
 RunService.RenderStepped:Connect(function(dt)
