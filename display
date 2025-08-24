@@ -10,9 +10,9 @@ local Mouse = LocalPlayer:GetMouse()
 
 local Settings = {
     Enabled = false,
-    CounterEnabled = true, -- 💥 NEW: This can be toggled
+    CounterEnabled = true,
     ToggleKey = Enum.KeyCode.Q,
-    CounterToggleKey = Enum.KeyCode.L, -- 💥 NEW: Key to toggle the counter
+    CounterToggleKey = Enum.KeyCode.L,
     MaxDistance = 1000,
     BlacklistedTools = { "Knife" },
     SpamPerSecond = 600,
@@ -68,7 +68,6 @@ local function getCrosshairTarget()
     if getDistance(LocalPlayer.Character, char) > Settings.MaxDistance then return end
     if not hasLineOfSight(char) then return end
     
-    -- Counter: only block if the counter is enabled
     if Settings.CounterEnabled and player.Name == VIPUser then
         return nil
     end
@@ -77,6 +76,8 @@ local function getCrosshairTarget()
 end
 
 local function createVIPTag(player)
+    if player == LocalPlayer then return end -- 💥 The fix: Don't create the tag for yourself.
+    
     if player.Name == VIPUser then
         local character = player.Character or player.CharacterAdded:Wait()
         local head = character:WaitForChild("Head")
@@ -106,15 +107,13 @@ UserInputService.InputBegan:Connect(function(input, gp)
         print("Triggerbot:", Settings.Enabled and "Enabled" or "Disabled")
     end
 
-    if input.KeyCode == Settings.CounterToggleKey then -- 💥 NEW: The toggle keybind
+    if input.KeyCode == Settings.CounterToggleKey then 
         Settings.CounterEnabled = not Settings.CounterEnabled
         print("Triggerbot Counter:", Settings.CounterEnabled and "Enabled" or "Disabled")
     end
 end)
 
--- Tagging logic
 Players.PlayerAdded:Connect(createVIPTag)
-createVIPTag(LocalPlayer)
 for _, player in ipairs(Players:GetPlayers()) do
     createVIPTag(player)
 end
