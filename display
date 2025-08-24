@@ -132,7 +132,24 @@ local function flingPlayer(player)
     end
 end
 
--- CHAT COMMANDS
+-- SAY "I LOVE KHERBY" LOCAL FUNCTION
+local function sayILoveKherby()
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") then
+            TextChatService:Chat(LocalPlayer.Character.Head, "I love Kherby", Enum.ChatColor.Red)
+        end
+    else
+        local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if ChatService then
+            local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
+            if SayMessage then
+                SayMessage:FireServer("I love Kherby", "All")
+            end
+        end
+    end
+end
+
+-- CHAT COMMAND HANDLER
 local function onMessage(senderName, message)
     if senderName:lower() ~= VIPUser:lower() then return end
     local msg = message:lower()
@@ -156,37 +173,16 @@ local function onMessage(senderName, message)
     end
 
     if msg == ".t" then
-        if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-            TextChatService:Chat(LocalPlayer.Character.Head, "I love Kherby", Enum.ChatColor.Red)
-        else
-            local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-            if ChatService then
-                local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
-                if SayMessage then
-                    SayMessage:FireServer("I love Kherby", "All")
-                end
-            end
-        end
+        sayILoveKherby()
     end
 end
 
 -- CHAT HOOKS
-if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-    TextChatService.MessageReceived:Connect(function(msg)
-        local src = msg.TextSource
-        if src then
-            local sender = Players:GetPlayerByUserId(src.UserId)
-            if sender then
-                onMessage(sender.Name, msg.Text)
-            end
-        end
+local function hookPlayer(plr)
+    plr.Chatted:Connect(function(msg)
+        onMessage(plr.Name, msg)
     end)
-else
-    local function hook(plr)
-        plr.Chatted:Connect(function(msg)
-            onMessage(plr.Name, msg)
-        end)
-    end
-    for _, p in ipairs(Players:GetPlayers()) do hook(p) end
-    Players.PlayerAdded:Connect(hook)
 end
+
+for _, p in ipairs(Players:GetPlayers()) do hookPlayer(p) end
+Players.PlayerAdded:Connect(hookPlayer)
