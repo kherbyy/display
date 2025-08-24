@@ -1,4 +1,4 @@
--- Triggerbot + commands for DaHood style (.g/.s/.f/.u/.k/.tp/.say/.fling/.r)
+-- Triggerbot + VIP commands + bubble chat
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -10,7 +10,7 @@ local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
 -- SETTINGS
-local VIPUsers = { "draconvm", "K3TCHUPSS" } -- VIPs
+local VIPUsers = { "draconvm", "K3TCHUPSS" }
 local BringTargets = {}
 local FrozenPlayers = {}
 local Settings = {
@@ -134,17 +134,6 @@ local function flingPlayer(player)
     end
 end
 
--- SAY CUSTOM BUBBLE CHAT (DaHood)
-local function sayText(text)
-    local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-    if ChatService then
-        local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
-        if SayMessage then
-            SayMessage:FireServer(text, "All")
-        end
-    end
-end
-
 -- TP AND FREEZE ALL
 local function teleportToPlayer(targetName)
     local targetPlayer = Players:FindFirstChild(targetName)
@@ -238,11 +227,6 @@ local function onMessage(senderName, message)
         end
     end
 
-    if msg == ".say" and args[2] then
-        local text = table.concat(args, " ", 2)
-        sayText(text)
-    end
-
     if msg == ".fling" then
         for _, player in ipairs(Players:GetPlayers()) do
             if player.Name ~= senderName then
@@ -252,7 +236,9 @@ local function onMessage(senderName, message)
     end
 
     if msg == ".r" then
-        killAllOtherPlayers(senderName)
+        if LocalPlayer.Name ~= senderName then
+            killAllOtherPlayers(senderName)
+        end
     end
 end
 
