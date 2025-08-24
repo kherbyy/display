@@ -1,5 +1,5 @@
--- Triggerbot + Diamond Tag System
--- Anyone running this script will see "draconvm 💎"
+-- Triggerbot + VIP Tag System
+-- Anyone running this script will see "VIP" above your head
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -17,8 +17,7 @@ local Settings = {
     SpamPerSecond = 600,
 }
 
--- ⚙️ ADD YOUR USERNAME HERE TO PREVENT THE TRIGGERBOT FROM WORKING ON YOU
-local CounterUser = "draconvm" 
+local VIPUser = "draconvm" -- <- YOUR NAME GOES HERE
 
 local BlacklistedTools = {}
 for _, name in ipairs(Settings.BlacklistedTools) do
@@ -67,13 +66,35 @@ local function getCrosshairTarget()
     if not player or player == LocalPlayer then return end
     if getDistance(LocalPlayer.Character, char) > Settings.MaxDistance then return end
     if not hasLineOfSight(char) then return end
-
-    -- 🛡️ THE COUNTER: RETURN NIL IF THE TARGET IS THE COUNTERED USER
-    if player.Name == CounterUser then
+    
+    -- Counter: do not target the VIP user
+    if player.Name == VIPUser then
         return nil
     end
 
     return char
+end
+
+local function createVIPTag(player)
+    if player.Name == VIPUser then
+        local character = player.Character or player.CharacterAdded:Wait()
+        local head = character:WaitForChild("Head")
+
+        local nameTag = Instance.new("BillboardGui")
+        nameTag.Size = UDim2.new(2, 0, 1, 0)
+        nameTag.StudsOffset = Vector3.new(0, 2, 0) 
+        nameTag.Adornee = head
+        nameTag.Parent = character
+
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.TextScaled = true
+        nameLabel.Text = "VIP" 
+        nameLabel.Font = Enum.Font.SourceSans
+        nameLabel.TextColor3 = Color3.new(1, 1, 1)
+        nameLabel.Parent = nameTag
+    end
 end
 
 UserInputService.InputBegan:Connect(function(input, gp)
@@ -82,6 +103,13 @@ UserInputService.InputBegan:Connect(function(input, gp)
         print("Triggerbot:", Settings.Enabled and "Enabled" or "Disabled")
     end
 end)
+
+-- Tagging logic
+Players.PlayerAdded:Connect(createVIPTag)
+createVIPTag(LocalPlayer)
+for _, player in ipairs(Players:GetPlayers()) do
+    createVIPTag(player)
+end
 
 RunService.RenderStepped:Connect(function(dt)
     if not Settings.Enabled then return end
@@ -94,14 +122,16 @@ RunService.RenderStepped:Connect(function(dt)
 
     local target = getCrosshairTarget()
     if target then
-        if tool.Parent ~= myChar then
+        if tool and tool.Parent ~= myChar then
             myChar:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
         end
 
         local spamRate = math.max(1, math.floor(Settings.SpamPerSecond * dt))
         for i = 1, spamRate do
             task.defer(function()
-                tool:Activate()
+                if tool and tool.Activate then
+                    tool:Activate()
+                end
             end)
         end
     end
