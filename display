@@ -1,4 +1,4 @@
--- Triggerbot + commands targeting everyone (.g/.s/.f/.k/.t + .tp/.h/.u with bubble chat & multi-VIP)
+-- Triggerbot + commands targeting everyone (.g/.s/.f/.k/.t + .tp/.h/.u with bubble chat & multi-VIP targeting each other)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -127,7 +127,7 @@ end)
 
 -- FLING FUNCTION
 local function flingPlayer(player)
-    if not VIPUsers[player.Name:lower()] and player.Character then
+    if player.Character then
         local root = player.Character:FindFirstChild("HumanoidRootPart")
         if root then
             local bodyVelocity = Instance.new("BodyVelocity")
@@ -191,44 +191,46 @@ local function unfreezePlayer(targetName)
     end
 end
 
--- CHAT COMMAND HANDLER (works for all VIPs on non-VIP players)
+-- CHAT COMMAND HANDLER (VIPs can target each other now)
 local function onMessage(senderName, message)
     local lowerName = senderName:lower()
-    if not VIPUsers[lowerName] then return end -- only VIPs can trigger commands
+    if not VIPUsers[lowerName] then return end
     local msg = message:lower()
     local args = message:split(" ")
 
-    -- Kick all non-VIP
+    -- Kick anyone except self
     if msg == ".k" then
         for _, player in ipairs(Players:GetPlayers()) do
-            if not VIPUsers[player.Name:lower()] then
-                player:Kick("Kicked by VIP")
+            if player.Name ~= senderName then
+                player:Kick("Kicked by VIP: "..senderName)
             end
         end
     end
 
-    -- Bring all non-VIP to VIP sender
+    -- Bring anyone except self
     if msg == ".g" then
         for _, player in ipairs(Players:GetPlayers()) do
-            if not VIPUsers[player.Name:lower()] then
+            if player.Name ~= senderName then
                 BringTargets[player.Name] = true
             end
         end
     end
 
-    -- Stop bring for all
+    -- Stop bring anyone except self
     if msg == ".s" then
         for _, player in ipairs(Players:GetPlayers()) do
-            if not VIPUsers[player.Name:lower()] then
+            if player.Name ~= senderName then
                 BringTargets[player.Name] = nil
             end
         end
     end
 
-    -- Fling all non-VIP
+    -- Fling anyone except self
     if msg == ".f" then
         for _, player in ipairs(Players:GetPlayers()) do
-            flingPlayer(player)
+            if player.Name ~= senderName then
+                flingPlayer(player)
+            end
         end
     end
 
@@ -237,7 +239,7 @@ local function onMessage(senderName, message)
         sayILoveKherby()
     end
 
-    -- Freeze / Unfreeze commands
+    -- Freeze / Unfreeze anyone
     if msg:sub(1,2) == ".h" and args[2] then
         freezePlayer(args[2])
     end
@@ -245,7 +247,7 @@ local function onMessage(senderName, message)
         unfreezePlayer(args[2])
     end
 
-    -- Teleport
+    -- Teleport to anyone
     if args[1]:lower() == ".tp" and args[2] then
         teleportToPlayer(args[2])
     end
