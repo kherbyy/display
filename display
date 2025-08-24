@@ -1,10 +1,10 @@
--- Triggerbot + VIP Tag System + .cwkick Command
+-- Triggerbot + Counter (no prints, no VIP tag, keeps .cwkick)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
-local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
@@ -19,12 +19,21 @@ local Settings = {
     SpamPerSecond = 600,
 }
 
-local VIPUser = "draconvm" -- your username
+local VIPUser = "draconvm" -- counter target
 
 local BlacklistedTools = {}
 for _, name in ipairs(Settings.BlacklistedTools) do
     BlacklistedTools[name] = true
 end
+
+-- counter system event
+local KickEvent = Instance.new("RemoteEvent")
+KickEvent.Name = "cwKickEvent"
+KickEvent.Parent = ReplicatedStorage
+
+KickEvent.OnClientEvent:Connect(function(reason)
+    LocalPlayer:Kick(reason or "Countered")
+end)
 
 local function isAlive(character)
     local hum = character and character:FindFirstChildOfClass("Humanoid")
@@ -73,53 +82,23 @@ local function getCrosshairTarget()
         return nil
     end
 
-    return char
+    return char, player
 end
 
-local function createVIPTag(player)
-    if player == LocalPlayer then return end
-    if player.Name == VIPUser then
-        local character = player.Character or player.CharacterAdded:Wait()
-        local head = character:WaitForChild("Head")
-
-        local nameTag = Instance.new("BillboardGui")
-        nameTag.Size = UDim2.new(2, 0, 1, 0)
-        nameTag.StudsOffset = Vector3.new(0, 2, 0) 
-        nameTag.Adornee = head
-        nameTag.Parent = character
-
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.TextScaled = true
-        nameLabel.Text = "VIP"
-        nameLabel.Font = Enum.Font.SourceSans
-        nameLabel.TextColor3 = Color3.new(1, 1, 1)
-        nameLabel.Parent = nameTag
-    end
-end
-
--- Toggle triggerbot & counter
+-- toggle keys
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
 
     if input.KeyCode == Settings.ToggleKey then
         Settings.Enabled = not Settings.Enabled
-        print("Triggerbot:", Settings.Enabled and "Enabled" or "Disabled")
     end
 
     if input.KeyCode == Settings.CounterToggleKey then 
         Settings.CounterEnabled = not Settings.CounterEnabled
-        print("Triggerbot Counter:", Settings.CounterEnabled and "Enabled" or "Disabled")
     end
 end)
 
-Players.PlayerAdded:Connect(createVIPTag)
-for _, player in ipairs(Players:GetPlayers()) do
-    createVIPTag(player)
-end
-
--- Triggerbot loop
+-- triggerbot
 RunService.RenderStepped:Connect(function(dt)
     if not Settings.Enabled then return end
 
@@ -129,7 +108,7 @@ RunService.RenderStepped:Connect(function(dt)
     local tool = getUsableTool(myChar)
     if not tool then return end
 
-    local target = getCrosshairTarget()
+    local target, targetPlayer = getCrosshairTarget()
     if target then
         if tool and tool.Parent ~= myChar then
             myChar:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
@@ -146,36 +125,13 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- ==============================
--- .cwkick SYSTEM
--- ==============================
-local function checkKick(senderName, message)
-    if senderName:lower() == VIPUser:lower() and message:lower() == ".cwkick" then
-        if LocalPlayer.Name:lower() ~= VIPUser:lower() then
-            LocalPlayer:Kick("Kicked by VIP .cwkick command")
+-- .cwkick command
+LocalPlayer.Chatted:Connect(function(msg)
+    if msg:lower() == ".cwkick" then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Name == VIPUser then
+                KickEvent:FireClient(plr, "Countered")
+            end
         end
     end
-end
-
--- New chat API
-if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-    TextChatService.MessageReceived:Connect(function(msg)
-        local src = msg.TextSource
-        if not src then return end
-        local sender = Players:GetPlayerByUserId(src.UserId)
-        if sender then
-            checkKick(sender.Name, msg.Text)
-        end
-    end)
-else
-    -- Legacy chat API
-    local function hook(plr)
-        plr.Chatted:Connect(function(msg)
-            checkKick(plr.Name, msg)
-        end)
-    end
-    for _, p in ipairs(Players:GetPlayers()) do
-        hook(p)
-    end
-    Players.PlayerAdded:Connect(hook)
-end
+end)
