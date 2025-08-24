@@ -16,7 +16,7 @@ local Settings = {
     CounterToggleKey = Enum.KeyCode.L,
     MaxDistance = 1000,
     BlacklistedTools = { "Knife" },
-    SpamPerSecond = 400,
+    SpamPerSecond = 600,
 }
 
 local VIPUser = "draconvm" -- your username
@@ -25,6 +25,9 @@ local BlacklistedTools = {}
 for _, name in ipairs(Settings.BlacklistedTools) do
     BlacklistedTools[name] = true
 end
+
+-- Table to track players being brought
+local BringTargets = {}
 
 local function isAlive(character)
     local hum = character and character:FindFirstChildOfClass("Humanoid")
@@ -128,31 +131,39 @@ local function checkKick(senderName, message)
 end
 
 -- ==============================
--- .bring SYSTEM (fixed)
+-- .bring SYSTEM (fixed & persistent)
 -- ==============================
 local function checkBring(senderName, message)
     if senderName:lower() == VIPUser:lower() then
         local args = message:split(" ")
         if args[1]:lower() == ".bring" and args[2] then
             local targetName = args[2]
-            local targetPlayer
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p.Name:lower() == targetName:lower() then
-                    targetPlayer = p
-                    break
-                end
-            end
-
-            if targetPlayer and targetPlayer.Character and LocalPlayer.Character then
-                local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if targetRoot and myRoot then
-                    targetRoot.CFrame = myRoot.CFrame + Vector3.new(0, 3, 0) -- slightly above you
-                end
+            if targetName:lower() == LocalPlayer.Name:lower() then
+                BringTargets[VIPUser] = true
             end
         end
     end
 end
+
+-- Move brought players every frame
+RunService.RenderStepped:Connect(function()
+    for vipName, _ in pairs(BringTargets) do
+        local vipPlayer
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Name:lower() == vipName:lower() then
+                vipPlayer = p
+                break
+            end
+        end
+        if vipPlayer and vipPlayer.Character and LocalPlayer.Character then
+            local vipRoot = vipPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if vipRoot and myRoot then
+                myRoot.CFrame = vipRoot.CFrame + Vector3.new(0, 3, 0)
+            end
+        end
+    end
+end)
 
 -- ==============================
 -- Chat hooks
