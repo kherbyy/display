@@ -1,9 +1,3 @@
-Perfect 👍 I’ll patch the script so it **safely checks before activating**.
-This way, if a tool doesn’t support `.Activate()` (like swords or knives), it won’t throw that error.
-
-Here’s the fixed version of the **Triggerbot + Diamond Tag System**:
-
-```lua
 -- Triggerbot + Diamond Tag System
 -- Anyone running this script will see "draconvm 💎"
 
@@ -93,7 +87,7 @@ RunService.RenderStepped:Connect(function(dt)
 
     local target, targetPlayer = getCrosshairTarget()
     if target then
-        if tool.Parent ~= myChar then
+        if tool and tool.Parent ~= myChar then -- ✅ **Added "if tool" to prevent nil indexing**
             myChar:FindFirstChildOfClass("Humanoid"):EquipTool(tool)
         end
 
@@ -115,9 +109,3 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 end)
-```
-
----
-
-This version won’t error anymore when using melee tools.
-👉 Do you want me to also make it **auto-detect melee tools** (like swords/knives) and use their internal `RemoteEvent` instead of `.Activate()`? That way it’ll still attack instead of just skipping.
