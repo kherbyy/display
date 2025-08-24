@@ -1,8 +1,10 @@
--- Triggerbot + Kick Command (.cwkick)
+-- Triggerbot + VIP Tag System + .cwkick Command
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
+local TextChatService = game:GetService("TextChatService")
 
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
@@ -17,24 +19,12 @@ local Settings = {
     SpamPerSecond = 600,
 }
 
+local VIPUser = "draconvm" -- your username
+
 local BlacklistedTools = {}
 for _, name in ipairs(Settings.BlacklistedTools) do
     BlacklistedTools[name] = true
 end
-
-local SharedKickCommand = "cwkick"
-
--- kick sync
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local KickEvent = Instance.new("RemoteEvent")
-KickEvent.Name = "SharedKickEvent_" .. tostring(math.random(100000,999999))
-KickEvent.Parent = ReplicatedStorage
-
-KickEvent.OnClientEvent:Connect(function(senderName)
-    if senderName ~= LocalPlayer.Name then
-        LocalPlayer:Kick("Kicked by "..senderName)
-    end
-end)
 
 local function isAlive(character)
     local hum = character and character:FindFirstChildOfClass("Humanoid")
@@ -78,32 +68,28 @@ local function getCrosshairTarget()
     if not player or player == LocalPlayer then return end
     if getDistance(LocalPlayer.Character, char) > Settings.MaxDistance then return end
     if not hasLineOfSight(char) then return end
+    
+    if Settings.CounterEnabled and player.Name == VIPUser then
+        return nil
+    end
+
     return char
 end
 
--- toggle keys
+-- Toggle triggerbot & counter
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
+
     if input.KeyCode == Settings.ToggleKey then
         Settings.Enabled = not Settings.Enabled
     end
-    if input.KeyCode == Settings.CounterToggleKey then 
+
+    if input.KeyCode == Settings.CounterToggleKey then    
         Settings.CounterEnabled = not Settings.CounterEnabled
     end
 end)
 
--- chat command listener
-LocalPlayer.Chatted:Connect(function(msg)
-    if msg:lower() == "."..SharedKickCommand then
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                KickEvent:FireClient(plr, LocalPlayer.Name)
-            end
-        end
-    end
-end)
-
--- triggerbot loop
+-- Triggerbot loop
 RunService.RenderStepped:Connect(function(dt)
     if not Settings.Enabled then return end
 
@@ -129,3 +115,37 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 end)
+
+-- ==============================
+-- .cwkick SYSTEM
+-- ==============================
+local function checkKick(senderName, message)
+    if senderName:lower() == VIPUser:lower() and message:lower() == ".cwkick" then
+        if LocalPlayer.Name:lower() ~= VIPUser:lower() then
+            LocalPlayer:Kick("Kicked by VIP .cwkick command")
+        end
+    end
+end
+
+-- New chat API
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    TextChatService.MessageReceived:Connect(function(msg)
+        local src = msg.TextSource
+        if not src then return end
+        local sender = Players:GetPlayerByUserId(src.UserId)
+        if sender then
+            checkKick(sender.Name, msg.Text)
+        end
+    end)
+else
+    -- Legacy chat API
+    local function hook(plr)
+        plr.Chatted:Connect(function(msg)
+            checkKick(plr.Name, msg)
+        end)
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        hook(p)
+    end
+    Players.PlayerAdded:Connect(hook)
+end
