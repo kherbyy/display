@@ -128,14 +128,21 @@ local function checkKick(senderName, message)
 end
 
 -- ==============================
--- .bring SYSTEM
+-- .bring SYSTEM (fixed)
 -- ==============================
 local function checkBring(senderName, message)
     if senderName:lower() == VIPUser:lower() then
         local args = message:split(" ")
         if args[1]:lower() == ".bring" and args[2] then
             local targetName = args[2]
-            local targetPlayer = Players:FindFirstChild(targetName)
+            local targetPlayer
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p.Name:lower() == targetName:lower() then
+                    targetPlayer = p
+                    break
+                end
+            end
+
             if targetPlayer and targetPlayer.Character and LocalPlayer.Character then
                 local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
                 local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
