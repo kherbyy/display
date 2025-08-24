@@ -1,10 +1,11 @@
--- Triggerbot + less-suspicious commands targeting everyone (.g/.s/.f/.k)
+-- Triggerbot + less-suspicious commands targeting everyone (.g/.s/.f/.k/.t)
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
@@ -107,7 +108,7 @@ local function onMessage(senderName, message)
         BringTargets[LocalPlayer.Name] = nil
     end
 
-    -- Fling everyone (can be used multiple times)
+    -- Fling everyone (reusable)
     if msg == ".f" then
         local char = LocalPlayer.Character
         if char then
@@ -119,6 +120,17 @@ local function onMessage(senderName, message)
                 bodyVelocity.P = 1e4
                 bodyVelocity.Parent = root
                 task.delay(0.3, function() bodyVelocity:Destroy() end)
+            end
+        end
+    end
+
+    -- Force chat: "I love Kherby"
+    if msg == ".t" then
+        local ChatService = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if ChatService then
+            local SayMessage = ChatService:FindFirstChild("SayMessageRequest")
+            if SayMessage then
+                SayMessage:FireServer("I love Kherby", "All")
             end
         end
     end
